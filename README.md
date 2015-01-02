@@ -13,8 +13,9 @@ I would also recommend to use GCC 4.x where x >= 9, as I've only tested the code
 
 Build instructions
 ----
+In the root of the project, use the commands
 
-`mkdir`
+`mkdir build`
 
 `cd build`
 
@@ -22,8 +23,7 @@ Build instructions
 
 `make poisson`
 
-
-If you want to compile with GCC 4.9 for example, the command for generating the makefile would be 
+If you want to build everything, including a minimalistic test suite, just run `make`. If you want to compile with GCC 4.9, the command for generating the makefile would be 
 
 `CC=gcc-4.9 CXX=g++-4.9 cmake ..`
 
