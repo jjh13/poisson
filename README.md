@@ -5,19 +5,31 @@ Requirements
 ----
 This project should build in any *NIX environment, but requires cmake, ViennaCL, Eigen and FFTW to be install. On OSX, these can be installed via MacPorts with the command
 
-sudo port install cmake eigen3 viennacl fftw3
+`sudo port install cmake eigen3 viennacl fftw3`
 
+I would also recommend to use GCC 4.x where x >= 9, as I've only tested the code with GCC (OSX uses the Clang compiler by default, which also does not support OpenMP which I've used in some of the code to get a cheap speed increase.) Again, on OSX with MacPorts, to install GCC 4.x, use
+
+`sudo port install gcc49`
 
 Build instructions
 ----
 
-cd build
-cmake ..
-make poisson
+`mkdir`
+
+`cd build`
+
+`cmake ..`
+
+`make poisson`
+
+
+If you want to compile with GCC 4.9 for example, the command for generating the makefile would be 
+
+`CC=gcc-4.9 CXX=g++-4.9 cmake ..`
 
 Running
 ---
 
 Run
 ./poisson
-to see a list of options.
+to see a list of options. 
