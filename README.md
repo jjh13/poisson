@@ -3,11 +3,11 @@ BCC Poisson Surface Reconstruction
 
 Requirements
 ----
-This project should build in any *NIX environment, but requires cmake, ViennaCL, Eigen and FFTW to be install. On OSX, these can be installed via MacPorts with the command
+This project should build in any *NIX environment, but requires cmake, ViennaCL, Eigen and FFTW to be installed. On OSX, these dependecies can be installed via MacPorts with the command
 
 `sudo port install cmake eigen3 viennacl fftw3`
 
-I would also recommend to use GCC 4.x where x >= 9, as I've only tested the code with GCC (OSX uses the Clang compiler by default, which also does not support OpenMP which I've used in some of the code to get a cheap speed increase.) Again, on OSX with MacPorts, to install GCC 4.x, use
+I would also recommend to use GCC 4.x where x >= 9, as I've only tested the code with GCC (OSX uses the Clang compiler by default, which also does not support OpenMP which I've used in some of the code to get a cheap speed increase.) To install GCC 4.9 on OSX with MacPorts, use
 
 `sudo port install gcc49`
 
