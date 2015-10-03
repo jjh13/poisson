@@ -8,6 +8,7 @@ add_executable(ply_test ply_test.cpp)
 add_executable(mc_test mc_test.cpp)
 add_executable(prim_test primitive_test.cpp)
 add_executable(scattered_test scattered_test.cpp)
+add_executable(ppm_test ppm_test.cpp)
 
 
 target_link_libraries (array_test ${LIBS})

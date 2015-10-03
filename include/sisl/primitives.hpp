@@ -10,6 +10,51 @@
 #define _PRIMITIVES_H
 
 namespace sisl{
+
+template <class T = float>
+struct vector2 {
+	T i,j;
+	inline vector2(){i=j=0.;}
+	inline vector2(T ii, T jj) : i(ii), j(jj) { }
+	inline vector2(const vector2<T> &vect) {
+		i = vect.i;
+		j = vect.j;
+	}
+
+	inline vector2<T> &operator+=(const vector2<T> &v) {
+		this->i += v.i;
+		this->j += v.j;
+		return *this;
+	}
+
+	inline vector2<T> &operator-=(const vector2<T> &v) {
+		this->i -= v.i;
+		this->j -= v.j;
+		return *this;
+	}
+
+	inline vector2<T> operator +(const vector2<T> &v) const {
+		return vector2<T>(i + v.i, j + v.j);
+	}
+
+	inline vector2<T> operator -(const vector2<T> &v) const {
+		return vector2<T>(i - v.i, j - v.j);
+	}
+
+	inline T operator*(const vector2<T> &v) const {
+		return i*v.i + j*v.j;
+	}
+
+	inline vector2<T> operator*(T scalar) const {
+		return vector2<T> (i * scalar, j * scalar) ;
+	}
+
+	inline vector2<T> operator -() const {
+		return vector2<T>(-i, -j);
+	}
+};
+
+
 template <class T = float>
 struct vector3{
 	T i,j,k;
@@ -31,7 +76,7 @@ struct vector3{
 	inline vector3<T> operator -(const vector3<T> &v) const {
 		return vector3<T>(i - v.i, j - v.j, k - v.k);
 	}
-	inline T operator*(const vector3 &v) const {
+	inline T operator*(const vector3<T> &v) const {
 		return i*v.i + j*v.j + k * v.k;
 	}
 	inline vector3<T> operator%(const vector3<T> &v) const {
