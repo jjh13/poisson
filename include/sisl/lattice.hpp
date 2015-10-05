@@ -73,21 +73,21 @@ public:
 	virtual O GV(const int &x, const int &y) const = 0;
 
 	virtual void SN(const int &x, const int &y, const vector2<O> &value) = 0;
-	virtual vector3<O> GN(const int &x, const int &y) = 0;
+	virtual vector2<O> GN(const int &x, const int &y) = 0;
 
 	virtual const int lIndex(const int &x, const int &y) const = 0;
 	virtual const int numberOfLatticeSites() const = 0;
 
 	virtual I getScale() const = 0;
 	virtual const int getResolution() const = 0;
-	virtual vector3<I> getSitePosition(const int &x, const int &y) const = 0;
-	virtual vector3<int> getNearestIndex(const vector2<I> &) const = 0;
+	virtual vector2<I> getSitePosition(const int &x, const int &y) const = 0;
+	virtual vector2<int> getNearestIndex(const vector2<I> &) const = 0;
 
 	// Evaluates the function  
 	virtual const O f(const I &x, const I &y) = 0;
-	virtual vector3<O> grad_f(const I &x, const I &y) = 0; 
+	virtual vector2<O> grad_f(const I &x, const I &y) = 0; 
 	virtual const O f(const vector2<I>&) = 0;
-	virtual vector3<O> grad_f(const vector2<I>&) = 0; 
+	virtual vector2<O> grad_f(const vector2<I>&) = 0; 
 
 	//
 	virtual void forEachLatticeSite(std::function<O(const int &, const int &)>) = 0; //

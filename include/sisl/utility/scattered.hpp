@@ -83,6 +83,54 @@ void createBigPhi(
 	printf("Copying OK...\n");
 }
 
+template <class L, class GF, class I, class O>
+void createBigPhi2D(
+		const std::vector<vector2<I>> &samplePts, 
+		L *l,
+		vector2<I> latticeShift,
+		viennacl::compressed_matrix<O> &phi,
+		viennacl::compressed_matrix<O> &phiT) {
+
+	int nSize = l->numberOfLatticeSites();
+	std::vector<Eigen::Triplet<O>> eigenMap;
+	std::vector<std::tuple<int,int>> st = GF::getSupport();
+	I dh = l->getScale();
+
+	// Sample the basis function to create the Xi vector
+	for(unsigned int ptIndex = 0; ptIndex < samplePts.size(); ptIndex++) {
+		vector2<I> pt = samplePts[ptIndex] + (latticeShift * dh);
+		vector2<int> pIdx = l->getNearestIndex(pt);
+
+		// Sample each lattice site
+		for(unsigned int stIdx = 0; stIdx < st.size(); stIdx++) {
+			std::tuple<int,int> s = st[stIdx];
+			vector2<I> q = pt - l->getSitePosition(
+				std::get<0>(s) + pIdx.i,
+				std::get<1>(s) + pIdx.j);
+
+			int mindex = l->lIndex(
+				std::get<0>(s) + pIdx.i,
+				std::get<1>(s) + pIdx.j);
+			
+			O value = GF::M(q.i/dh, q.j/dh);
+
+			if(value == 0 || mindex < 0) continue;
+			eigenMap.push_back(Eigen::Triplet<O>(ptIndex, mindex, value));
+		}
+	}
+	Eigen::SparseMatrix<O> cpuPhi(samplePts.size(), nSize);
+	Eigen::SparseMatrix<O> cpuPhiT(nSize, samplePts.size());
+
+	cpuPhi.setFromTriplets(eigenMap.begin(), eigenMap.end());
+	cpuPhiT = Eigen::SparseMatrix<O>(cpuPhi.transpose());
+
+	printf("\nCopying to gpu...\n");
+	viennacl::copy(cpuPhi, phi);
+	viennacl::copy(cpuPhiT, phiT);
+
+	printf("Copying OK...\n");
+}
+
 
 template <class L, class GF, class I, class O>
 void splatSamplesOntoLattice(
@@ -348,6 +396,115 @@ bool ConjugateGradientCC(
 	});
 }
 
+template <class L, class GF, class I, class O>
+bool ConjugateGradientCC2(
+		viennacl::compressed_matrix<O> &phi,
+		viennacl::compressed_matrix<O> &phiT,
+		const std::vector<O> &samples,
+		const std::vector<std::tuple<int,int,O>> &optimizationVector,
+		L *l,
+		O *err = NULL, int *iter = NULL) {
+
+
+	int nSize = l->numberOfLatticeSites();
+	int niter = 0;
+
+	// Setup the residual vectors
+	viennacl::vector<O> residual(nSize), p(nSize), Ap(nSize), x(nSize);
+	viennacl::vector<O> apTT(samples.size()), lsample(samples.size());
+
+
+	// Initialize with zero 
+	residual.clear(); p.clear();
+	Ap.clear(); x.clear(); apTT.clear();
+
+	O resNew = 0;
+	O resOld = 0;
+	O alpha = 0;
+
+	viennacl::copy(samples, lsample);
+
+	// Do an initial iteration
+	residual = viennacl::linalg::prod(phiT, lsample);
+	p = viennacl::linalg::prod(phiT, lsample);
+	resNew = viennacl::linalg::inner_prod(p,p);
+	resOld = resNew;
+
+	viennacl::ocl::handle<cl_mem> xr, yr, zr, blw;
+	viennacl::ocl::program &normMtxPrgm = viennacl::ocl::current_context().add_program(sisl::utility::_cc_optimization_kernel_dbl, "blCode");
+
+	// Setup the opencl kernel for execution
+	{
+		std::vector<cl_int> xv, yv, zv;
+		std::vector<cl_double> w;
+
+		for(auto itr = optimizationVector.begin(); itr != optimizationVector.end(); ++itr) {
+			auto t = (*itr);
+			xv.push_back(std::get<0>(t));
+			yv.push_back(std::get<1>(t));
+			zv.push_back(std::get<2>(t));
+			w.push_back(std::get<3>(t));
+		}
+
+		xr = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+						1024 * sizeof(cl_int), &(xv[0]));
+
+		yr = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+						1024 * sizeof(cl_int), &(yv[0]));
+
+		zr = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+						1024 * sizeof(cl_int), &(zv[0]));
+
+		blw = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+						1024 * sizeof(cl_double), &(w[0]));
+	}
+
+	viennacl::ocl::kernel &blKern = normMtxPrgm.get_kernel("blnorm");
+	//normMtxPrgm.add_kernel(blKern, "blnorm");
+
+	for(niter = 0; niter < 5000; niter++) {
+		alpha = 0;
+		apTT = viennacl::linalg::prod(phi, p);
+		Ap = viennacl::linalg::prod(phiT, apTT);
+
+		viennacl::ocl::enqueue(
+			blKern(p, 
+				xr, yr, zr, blw, Ap,
+				static_cast<cl_uint>(nSize),
+				static_cast<cl_uint>(l->getResolution()),
+				static_cast<cl_uint>(l->getResolution()),
+				static_cast<cl_uint>(l->getResolution()),
+				static_cast<cl_double>(1)));
+		viennacl::backend::finish();
+
+		alpha = resOld/viennacl::linalg::inner_prod(p, Ap);
+		x = x + alpha * p;
+		residual = residual - (alpha * Ap);
+		resNew = viennacl::linalg::inner_prod(residual, residual);
+
+		if(sqrt(resNew) < 1e-5)
+			break;
+
+		printf("%d: %f...\r",niter, sqrt(resNew));
+		std::cout.flush();
+
+		p = residual + (resNew/resOld)*p;
+		resOld=resNew;
+	}
+
+	residual.clear();
+	p.clear(); 
+	Ap.clear();
+	apTT.clear();
+
+	std::vector<double> cpuX(nSize);
+	viennacl::copy(x, cpuX);
+	x.clear();
+
+	l->forEachLatticeSite([&](const int &i, const int &j, const int &k) {
+		return cpuX[l->lIndex(i,j,k)];
+	});
+}
 
 template <class L, class GF, class I, class O>
 bool fitPoints(
@@ -423,6 +580,36 @@ const char * _cc_optimization_kernel_dbl =
 "		unsigned int nx, \n"
 "		unsigned int ny, \n"
 "		unsigned int nz, \n"
+"		double lambda) { \n"
+"	for (unsigned int i = get_global_id(0); i < size; i += get_global_size(0)) { \n"
+"		double temp = 0;	\n"
+"		int z = i % nz; \n"
+"		int y = ((i - z)/nz) % ny; \n"
+"		int x = (((i - z)/nz) - y) / ny; \n"
+"		for(unsigned int j = 0; j < 343; j++) { \n"
+"			int xx = xOffset[j] + x; \n"
+"			int yy = yOffset[j] + y; \n"
+"			int zz = zOffset[j] + z; \n"
+"			int index = zz + nx*(yy+ny*xx); \n"
+"			if(xx < 0 || yy < 0 || zz < 0 || xx >= nx || yy >= ny || zz >= nz || index >= size) continue; \n"
+"			temp += vectorIn[index]*weights[j]; \n"
+"		}\n"
+"		result[i] += temp; \n"
+"	}"
+"};\n";
+
+
+const char * _cc2d_optimization_kernel_dbl = 
+"#pragma OPENCL EXTENSION cl_khr_fp64 : enable \n"
+"__kernel void blnorm(\n"
+"       __global const double * vectorIn,\n"
+"       __global const int * xOffset, \n"
+"       __global const int * yOffset, \n"
+"       __global const double * weights,\n"
+"       __global double * result,\n"
+"       unsigned int size, \n"
+"		unsigned int nx, \n"
+"		unsigned int ny, \n"
 "		double lambda) { \n"
 "	for (unsigned int i = get_global_id(0); i < size; i += get_global_size(0)) { \n"
 "		double temp = 0;	\n"

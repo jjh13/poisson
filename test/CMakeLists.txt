@@ -19,6 +19,7 @@ target_link_libraries (cc_test ${LIBS})
 target_link_libraries (cc_test ${LIBS})
 target_link_libraries (prim_test ${LIBS})
 target_link_libraries (scattered_test ${LIBS})
+target_link_libraries (ppm_test ${LIBS})
 
 add_test(ArrayTest array_test)
 add_test(BCCTest bcc_test)
@@ -28,3 +29,5 @@ add_test(MarchingCubesTest mc_test)
 add_test(PrimitiveTest prim_test)
 add_test(ScatteredDataTest scattered_test)
 add_test(FCCTest fcc_test)
+add_test(PPMTest ppm_test)
+

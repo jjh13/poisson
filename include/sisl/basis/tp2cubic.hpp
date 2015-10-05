@@ -11,12 +11,22 @@ template <class O, class I>
 class tp2linear: public basis_function2 <O,I> {
 private:
 	static inline O bspline1(const I &t){
-
-//		I x = abs(t);
-		if(t >= -1 && t <= 0) return t + 1.;
-		else if (t > 0 && t <= 1) return 1. - t;
-		return I(0);
+		if(t <= -2  || t > 2)
+			return 0;
+		if(t <= -1 && t > -2)
+			return (4./3.) + t*(2. + t*(1. + (1./6.)*t));
+		if(t <= 0 && t > -1)
+			return (2./3.) + t*t*(-1. - 0.5*t);
+		if( t <= 1 && t > 0)
+			return (2./3.) + t*t*(-1. + 0.5*t);
+		return (4./3.) + t*(-2. + t*(1. - (1./6.)*t));
 	}
+
+// //		I x = abs(t);
+// 		if(t >= -1 && t <= 0) return t + 1.;
+// 		else if (t > 0 && t <= 1) return 1. - t;
+// 		return I(0);
+// 	}
 
 public:
 	static std::string getBasisName(){
@@ -149,6 +159,59 @@ public:
 								invh*(-7. + cos(v))*sin(0.5*v)*sin(0.5*v));
 		return 	lambda;
 	}
+	/* 
+	bl2 norm 
+
+{maketuple(-3, -3, 13./317520.), maketuple(-3, -2, 1./756.), 
+ maketuple(-3, -1, 641./105840.), maketuple(-3, 0, 178./19845.), 
+ maketuple(-3, 1, 641./105840.),  maketuple(-3, 2, 1./756.), 
+ maketuple(-3, 3, 13./317520.),  maketuple(-2, -3, 1./756.), 
+ maketuple(-2, -2, 8./441.),  maketuple(-2, -1, 11./1764.), 
+ maketuple(-2, 0, -68./1323.), maketuple(-2, 1, 11./1764.),  maketuple(-2, 2, 8./441.), 
+ maketuple(-2, 3, 1./756.),  maketuple(-1, -3, 641./105840.), 
+ maketuple(-1, -2, 11./1764.),  maketuple(-1, -1, -3323./35280.), 
+ maketuple(-1, 0, -334./6615.), maketuple(-1, 1, -3323./35280.), 
+ maketuple(-1, 2, 11./1764.),  maketuple(-1, 3, 641./105840.), 
+ maketuple(0, -3, 178./19845.),  maketuple(0, -2, -68./1323.), 
+ maketuple(0, -1, -334./6615.),  maketuple(0, 0, 11248./19845.), 
+ maketuple(0, 1, -334./6615.),  maketuple(0, 2, -68./1323.), 
+ maketuple(0, 3, 178./19845.),  maketuple(1, -3, 641./105840.), 
+ maketuple(1, -2, 11./1764.),  maketuple(1, -1, -3323./35280.), 
+ maketuple(1, 0, -334./6615.), maketuple(1, 1, -3323./35280.), 
+ maketuple(1, 2, 11./1764.),  maketuple(1, 3, 641./105840.), 
+ maketuple(2, -3, 1./756.),  maketuple(2, -2, 8./441.), 
+ maketuple(2, -1, 11./1764.),  maketuple(2, 0, -68./1323.), 
+ maketuple(2, 1, 11./1764.),  maketuple(2, 2, 8./441.), 
+ maketuple(2, 3, 1./756.),  maketuple(3, -3, 13./317520.), 
+ maketuple(3, -2, 1./756.),  maketuple(3, -1, 641./105840.), 
+ maketuple(3, 0, 178./19845.),  maketuple(3, 1, 641./105840.), 
+ maketuple(3, 2, 1./756.),  maketuple(3, 3, 13./317520.)}
+
+ {maketuple(-3, -3, 1./25401600.),  maketuple(-3, -2, 1./211680.), 
+  maketuple(-3, -1, 397./8467200.),  maketuple(-3, 0, 151./1587600.), 
+  maketuple(-3, 1, 397./8467200.),  maketuple(-3, 2, 1./211680.), 
+  maketuple(-3, 3, 1./25401600.),  maketuple(-2, -3, 1./211680.), 
+  maketuple(-2, -2, 1./1764.),   maketuple(-2, -1, 397./70560.), 
+  maketuple(-2, 0, 151./13230.),  maketuple(-2, 1, 397./70560.), 
+  maketuple(-2, 2, 1./1764.),   maketuple(-2, 3, 1./211680.), 
+  maketuple(-1, -3, 397./8467200.),  maketuple(-1, -2, 397./70560.), 
+  maketuple(-1, -1, 157609./2822400.),   maketuple(-1, 0, 59947./529200.), 
+  maketuple(-1, 1, 157609./2822400.),   maketuple(-1, 2, 397./70560.), 
+  maketuple(-1, 3, 397./8467200.),   maketuple(0, -3, 151./1587600.), 
+  maketuple(0, -2, 151./13230.),   maketuple(0, -1, 59947./529200.), 
+  maketuple(0, 0, 22801./99225.),   maketuple(0, 1, 59947./529200.), 
+  maketuple(0, 2, 151./13230.), maketuple(0, 3, 151./1587600.), 
+  maketuple(1, -3, 397./8467200.),  maketuple(1, -2, 397./70560.), 
+  maketuple(1, -1, 157609./2822400.),   maketuple(1, 0, 59947./529200.), 
+  maketuple(1, 1, 157609./2822400.),   maketuple(1, 2, 397./70560.), 
+  maketuple(1, 3, 397./8467200.),   maketuple(2, -3, 1./211680.), 
+  maketuple(2, -2, 1./1764.),   maketuple(2, -1, 397./70560.), 
+  maketuple(2, 0, 151./13230.),   maketuple(2, 1, 397./70560.), 
+  maketuple(2, 2, 1./1764.),   maketuple(2, 3, 1./211680.), 
+  maketuple(3, -3, 1./25401600.),   maketuple(3, -2, 1./211680.), 
+  maketuple(3, -1, 397./8467200.),  maketuple(3, 0, 151./1587600.), 
+  maketuple(3, 1, 397./8467200.),   maketuple(3, 2, 1./211680.), 
+  maketuple(3, 3, 1./25401600.)} */
 	// template <class L>
 	// static std::function<O(const int &, const int &, const int &, std::function<O(const int &, const int &, const int & )>)> 
 	// 	divergenceFilter(L *x, L *y, L *z){

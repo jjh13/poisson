@@ -180,6 +180,80 @@ public:
 
 };
 
-}
 
+template <class T, class Allocator = std::allocator<T> >
+class sparse_array2 : array2<T,Allocator> {
+
+private:
+	T *_array;
+	unsigned int _nx, _ny;
+	std::unordered_map<int, T> siteMap;
+	T defaultValue;
+
+public:
+	sparse_array2(const T &dv) : _nx(0), _ny(0), defaultValue(dv) {
+		siteMap = std::unordered_map<int, T>(); 
+	}
+	sparse_array2(const int &nx, const int &ny, const T &dv) :  _nx(nx), _ny(ny), defaultValue(dv) { }
+	~sparse_array2() { }
+
+	inline sparse_array2& operator=(const sparse_array2 &rhs) {
+		throw "Not implemented";
+	}
+
+	inline void getDims(unsigned int *nx, unsigned int *ny) const {
+		if(nx != NULL)
+			*nx = _nx;
+		if(ny != NULL)
+			*ny = _ny;
+	}
+
+	inline T& operator()(int x, int y) {
+#ifndef	NO_ARRAY_CHECK
+		if(!(x >= 0 && x < _nx)) throw "Index X out of bounds!";
+		if(!(y >= 0 && y < _ny)) throw "Index Y out of bounds!";
+#endif 
+		int index = lIndex(x,y);
+		auto iter = siteMap.find(index);
+		if(iter == siteMap.end())
+			siteMap[index] = defaultValue;
+
+		return siteMap[index];
+	} 
+
+	inline const T& operator()(int x, int y) const {
+#ifndef	NO_ARRAY_CHECK
+		if(!(x >= 0 && x < _nx)) throw "Index X out of bounds!";
+		if(!(y >= 0 && y < _ny)) throw "Index Y out of bounds!";
+#endif 
+		int index = lIndex(x,y);
+		auto iter = siteMap.find(index);
+		if(iter == siteMap.end())
+			return defaultValue;
+		return iter->second;
+	}
+
+	inline bool hasValue(const int &x, const int &y){
+		return siteMap.find(lIndex(x,y)) != siteMap.end();
+	}
+
+	inline int lIndex(const int &x, const int &y) const {
+		return (y + _ny*x);
+	}
+	/**
+	 * Gets a pointer to the memory address
+	 * that the actual array is located at.
+	 * FFTW will need this eventually.
+	 **/
+	T* getArray() const {
+		return _array;
+	}
+
+	int size() const {
+		return _nx*_ny;
+	}
+
+};
+
+}
 #endif //_SPARSE_ARRAY3_H
