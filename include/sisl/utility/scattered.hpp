@@ -25,6 +25,7 @@ namespace sisl{
 namespace utility{
 extern const char * _bcc_optimization_kernel_dbl;
 extern const char * _cc_optimization_kernel_dbl;
+extern const char * _cc2d_optimization_kernel_dbl;
 
 /**
  * Samples the basis function specified by 
@@ -140,7 +141,6 @@ void splatSamplesOntoLattice(
 		vector3<I> latticeShift) {
 
 	int nSize = l->numberOfLatticeSites();
-	std::vector<Eigen::Triplet<O>> eigenMap;
 	std::vector<std::tuple<int,int,int>> st = GF::getSupport();
 	I dh = l->getScale();
 
@@ -167,6 +167,41 @@ void splatSamplesOntoLattice(
 				std::get<0>(s) + pIdx.i,
 				std::get<1>(s) + pIdx.j,
 				std::get<2>(s) + pIdx.k, value);
+		}
+	}
+}
+
+template <class L, class GF, class I, class O>
+void splatSamplesOntoLattice2D(
+		const std::vector<vector2<I>> &samplePts,
+		const std::vector<O> &samples,
+		L *l,
+		vector2<I> latticeShift) {
+
+	int nSize = l->numberOfLatticeSites();
+	std::vector<std::tuple<int,int>> st = GF::getSupport();
+	I dh = l->getScale();
+
+	// Sample the basis function to create the Xi vector
+	for(unsigned int ptIndex = 0; ptIndex < samplePts.size(); ptIndex++) {
+		vector2<I> pt = samplePts[ptIndex] + (latticeShift * dh);
+		vector2<int> pIdx = l->getNearestIndex(pt);
+
+		// Sample each lattice site
+		//#pragma omp parallel for
+		for(unsigned int stIdx = 0; stIdx < st.size(); stIdx++) {
+			std::tuple<int,int> s = st[stIdx];
+			vector2<I> q = pt - l->getSitePosition(
+				std::get<0>(s) + pIdx.i,
+				std::get<1>(s) + pIdx.j);
+
+			O value = GF::M(q.i/dh, q.j/dh) * samples[ptIndex] + l->GV(
+					std::get<0>(s) + pIdx.i,
+					std::get<1>(s) + pIdx.j);
+
+			l->SV(
+				std::get<0>(s) + pIdx.i,
+				std::get<1>(s) + pIdx.j, value);
 		}
 	}
 }
@@ -430,21 +465,20 @@ bool ConjugateGradientCC2(
 	resNew = viennacl::linalg::inner_prod(p,p);
 	resOld = resNew;
 
-	viennacl::ocl::handle<cl_mem> xr, yr, zr, blw;
-	viennacl::ocl::program &normMtxPrgm = viennacl::ocl::current_context().add_program(sisl::utility::_cc_optimization_kernel_dbl, "blCode");
+	viennacl::ocl::handle<cl_mem> xr, yr, blw;
+	viennacl::ocl::program &normMtxPrgm = viennacl::ocl::current_context().add_program(sisl::utility::_cc2d_optimization_kernel_dbl, "blCode");
 
 	// Setup the opencl kernel for execution
 	{
-		std::vector<cl_int> xv, yv, zv;
+		std::vector<cl_int> xv, yv;
 		std::vector<cl_double> w;
 
 		for(auto itr = optimizationVector.begin(); itr != optimizationVector.end(); ++itr) {
 			auto t = (*itr);
 			xv.push_back(std::get<0>(t));
 			yv.push_back(std::get<1>(t));
-			zv.push_back(std::get<2>(t));
-			w.push_back(std::get<3>(t));
-		}
+			w.push_back(std::get<2>(t));
+ 		}
 
 		xr = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 						1024 * sizeof(cl_int), &(xv[0]));
@@ -452,15 +486,11 @@ bool ConjugateGradientCC2(
 		yr = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 						1024 * sizeof(cl_int), &(yv[0]));
 
-		zr = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-						1024 * sizeof(cl_int), &(zv[0]));
-
 		blw = viennacl::ocl::current_context().create_memory(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 						1024 * sizeof(cl_double), &(w[0]));
 	}
 
 	viennacl::ocl::kernel &blKern = normMtxPrgm.get_kernel("blnorm");
-	//normMtxPrgm.add_kernel(blKern, "blnorm");
 
 	for(niter = 0; niter < 5000; niter++) {
 		alpha = 0;
@@ -469,9 +499,8 @@ bool ConjugateGradientCC2(
 
 		viennacl::ocl::enqueue(
 			blKern(p, 
-				xr, yr, zr, blw, Ap,
+				xr, yr, blw, Ap,
 				static_cast<cl_uint>(nSize),
-				static_cast<cl_uint>(l->getResolution()),
 				static_cast<cl_uint>(l->getResolution()),
 				static_cast<cl_uint>(l->getResolution()),
 				static_cast<cl_double>(1)));
@@ -501,8 +530,8 @@ bool ConjugateGradientCC2(
 	viennacl::copy(x, cpuX);
 	x.clear();
 
-	l->forEachLatticeSite([&](const int &i, const int &j, const int &k) {
-		return cpuX[l->lIndex(i,j,k)];
+	l->forEachLatticeSite([&](const int &i, const int &j) {
+		return cpuX[l->lIndex(i,j)];
 	});
 }
 
@@ -523,6 +552,27 @@ bool fitPoints(
 		ConjugateGradientBCC<L,GF,I,O>(phi, phiT, samples, optimizationVector, l, err, iter);
 	else if(l->getLatticeName() == "cartesian")
 		ConjugateGradientCC<L,GF,I,O>(phi, phiT, samples, optimizationVector, l, err, iter);
+	else
+		throw "fitPoints() - No cl kernel exists for this lattice type?";
+}
+
+template <class L, class GF, class I, class O>
+bool fitPoints2D(
+		const std::vector<vector2<I>> &samplePts, 
+		const std::vector<O> &samples,
+		const std::vector<std::tuple<int,int,O>> &optimizationVector,
+		L *l,
+		vector2<I> latticeShift,
+		O *err = NULL, int *iter = NULL) {
+
+	int nSize = l->numberOfLatticeSites();
+	viennacl::compressed_matrix<O> phi(samplePts.size(), nSize), phiT(nSize, samplePts.size());
+	createBigPhi2D<L,GF,I,O>(samplePts, l, latticeShift, phi, phiT);
+
+	if(l->getLatticeName() == "bcc")
+		; //ConjugateGradientBCC<L,GF,I,O>(phi, phiT, samples, optimizationVector, l, err, iter);
+	else if(l->getLatticeName() == "cartesian2")
+		ConjugateGradientCC2<L,GF,I,O>(phi, phiT, samples, optimizationVector, l, err, iter);
 	else
 		throw "fitPoints() - No cl kernel exists for this lattice type?";
 }
@@ -613,15 +663,13 @@ const char * _cc2d_optimization_kernel_dbl =
 "		double lambda) { \n"
 "	for (unsigned int i = get_global_id(0); i < size; i += get_global_size(0)) { \n"
 "		double temp = 0;	\n"
-"		int z = i % nz; \n"
-"		int y = ((i - z)/nz) % ny; \n"
-"		int x = (((i - z)/nz) - y) / ny; \n"
-"		for(unsigned int j = 0; j < 343; j++) { \n"
+"		int y = i % ny; \n"
+"		int x = ((i - y)/ny) % ny; \n"
+"		for(unsigned int j = 0; j < 50; j++) { \n"
 "			int xx = xOffset[j] + x; \n"
 "			int yy = yOffset[j] + y; \n"
-"			int zz = zOffset[j] + z; \n"
-"			int index = zz + nx*(yy+ny*xx); \n"
-"			if(xx < 0 || yy < 0 || zz < 0 || xx >= nx || yy >= ny || zz >= nz || index >= size) continue; \n"
+"			int index = yy + ny*xx; \n"
+"			if(xx < 0 || yy < 0 || xx >= nx || yy >= ny || index >= size) continue; \n"
 "			temp += vectorIn[index]*weights[j]; \n"
 "		}\n"
 "		result[i] += temp; \n"

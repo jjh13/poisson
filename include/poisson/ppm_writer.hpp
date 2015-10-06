@@ -10,6 +10,7 @@
 
 #include <sisl/sisl.hpp>
 #include <sisl/array.hpp>
+#include <sisl/utility/scattered.hpp>
 
 template <class I = float, class O = float>
 class ppm_writer
@@ -26,11 +27,11 @@ private:
 		using namespace std; 
 
 		O min = FLT_MAX;
-		O max = FLT_MIN;
+		O max = -FLT_MAX;
 
 		for(int i = 0; i < m_iWidth; i++)
 			for(int j = 0; j < m_iHeight; j++) {
-				vector3<O> data = this->at2(i,j);
+				vector3<O> data = this->at(i,j);
 				if(data.i < min) min = data.i;
 				if(data.j < min) min = data.j;
 				if(data.k < min) min = data.k;
@@ -38,7 +39,7 @@ private:
 				if(data.j > max) max = data.j;
 				if(data.k > max) max = data.k;
 			}
-		printf("min %f max %f", min, max);
+		printf("%f %f\n", min, max );
 		return vector2<O>(min, max);
 	}
 
@@ -51,16 +52,13 @@ public:
 
 	~ppm_writer() { delete m_parrImageData; };
 
-	sisl::vector3<unsigned char> &at(const int &x, const int &y) {
-		return (*m_parrImageData)(x,y);
-	}
-	sisl::vector3<O> &at2(const int &x, const int &y) {
+	sisl::vector3<O> &at(const int &x, const int &y) {
 		return (*m_parrImageData2)(x,y);
 	}
 
 
 	// sample
-	bool write2(const std::string &out) {
+	bool write(const std::string &out) {
 		using namespace sisl;
 		using namespace std; 
 
@@ -86,26 +84,6 @@ public:
 		fp.close();
 		return true;
 	}
-	// sample
-	bool write(const std::string &out) {
-		using namespace sisl;
-		using namespace std; 
-
-	    ofstream fp(out.c_str(), ios::out | ios::binary);
-	    if(!fp.good()) false;
-	    fp << "P3" << endl;
-	    fp << m_iWidth << " " << m_iHeight << endl;
-    	fp << "255" << endl;
-
-		for(int i = 0; i < m_iWidth; i++)
-			for(int j = m_iHeight - 1; j >= 0; j--) {
-				vector3<unsigned char> pix = (*m_parrImageData)(i,j);
-	    		fp << (int)pix.i << " " << (int)pix.j << " " << (int)pix.k << endl;
-			}
-		fp.close();
-		return true;
-	}
-
 	/* data */
 };
 

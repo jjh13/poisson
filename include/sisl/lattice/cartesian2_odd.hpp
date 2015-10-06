@@ -106,12 +106,11 @@ public:
 
 	//
 	virtual void forEachLatticeSite(std::function<O(const int &, const int &)> lambda) {
-		// #pragma omp parallel for
-		// for(int i = 1; i < this->res - 1; i++)
-		// 	for(int j = 1; j < this->res - 1; j++)
-		// 		for(int k = 1; k < this->res - 1; k++) {
-		// 			SV(i,j,k, lambda(i,j,k));
-		// 		}
+		#pragma omp parallel for
+		for(int i = 1; i < this->res - 1; i++)
+			for(int j = 1; j < this->res - 1; j++){
+					SV(i,j, lambda(i,j));
+				}
 	}
 	
 	//
