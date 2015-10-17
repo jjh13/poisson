@@ -81,6 +81,8 @@ void lobb_test(int res, vector<tuple<int, int, double>> qFilter, double fm) {
 
 TEST_CASE("Test 4dir boxspline  PPM", "2d") {
 
+	double freq = 200.;
+
 	vector<tuple<int, int, double>> qFilter4dbs = {
 		make_tuple(-1,1, 1./8.),
 		make_tuple(0,1, -3./8.),
@@ -106,15 +108,42 @@ TEST_CASE("Test 4dir boxspline  PPM", "2d") {
 		make_tuple(-1, 0, -1./2.),
 	};
 
-	for(int res = 64; res <= 256; res *= 2) {
+	vector<tuple<int, int, double>> qFilterCubic = {
+		make_tuple(0, 1, -1./3.),
+		make_tuple(0,-1, -1./3.),
+		make_tuple(0, 0, 7./3.),
+		make_tuple(-1, 0, -1./3.),
+		make_tuple(-1, 0, -1./3.),
+	};
 
-		lobb_test<zp_element<double, double>>(res, qFilterQuad, 80); 
-		lobb_test<dir8bs<double, double>>(res, qFilterLin, 80); 
-		lobb_test<tp2cubic<double, double>>(res, qFilterQuad, 80); 
+	vector<tuple<int, int, double>> qFilterZP= {
+		make_tuple(0, 1, -1./4.),
+		make_tuple(0,-1, -1./4.),
+		make_tuple(0, 0, 2.),
+		make_tuple(-1, 0, -1./4.),
+		make_tuple(-1, 0, -1./4.),
+	};
+
+	vector<tuple<int, int, double>> qFilter6dir = {
+		make_tuple(-2,-2,-1483./1800.), make_tuple(-2,-1,2653./1200.),
+		make_tuple(-2,0,-1./20.), make_tuple(-2,1,2117./3600.),
+		make_tuple(-1,-2,2653./1200.), make_tuple(-1,-1,-1717./360.),
+		make_tuple(-1,0,-2277./400.), make_tuple(-1,2,-179./900.),
+		make_tuple(0,-1,-2297./400.), make_tuple(0,0,6659./240.),
+		make_tuple(0,1,-12197./1200.), make_tuple(0,2,2653./1200.),
+		make_tuple(1,-2,1937./3600.), make_tuple(1,0,-12137./1200.),
+		make_tuple(1,1,2027./1800.), make_tuple(2,-1,-67./450.),
+		make_tuple(2,0,2593./1200.), make_tuple(2,2,-313./3600.)
+	};
+
+	for(int res = 64; res <= 512; res *= 2) {
 
 		// Done filters
-		lobb_test<tp2quadratic<double, double>>(res, qFilterQuad, 80); 
-		lobb_test<tp2linear<double, double>>(res, qFilterLin, 80); 
-		lobb_test<dir4bs<double, double>>(res, qFilter4dbs, 80); 
+		lobb_test<dir8bs<double, double>>(res, qFilter6dir, freq); 
+		lobb_test<zp_element<double, double>>(res, qFilterZP, freq); 
+		lobb_test<tp2quadratic<double, double>>(res, qFilterQuad, freq); 
+		lobb_test<tp2linear<double, double>>(res, qFilterLin, freq); 
+		lobb_test<dir4bs<double, double>>(res, qFilter4dbs, freq); 
+		lobb_test<tp2cubic<double, double>>(res, qFilterCubic, freq); 
 	}
 }
