@@ -3,29 +3,24 @@
 #include <sisl/lattice.hpp>
 #include <vector>
 
-#ifndef _TP_BSPLINECUB2_H_
-#define _TP_BSPLINECUB2_H_
+#ifndef _TP_BSPLINEQUAD2_H_
+#define _TP_BSPLINEQUAD2_H_
 
 namespace sisl{
 template <class O, class I>
-class tp2cubic: public basis_function2 <O,I> {
+class tp2quadratic: public basis_function2 <O,I> {
 private:
-	static inline O bspline3(const I &t){
-		if(t <= -2  || t > 2)
-			return 0;
-		if(t <= -1 && t > -2)
-			return (4./3.) + t*(2. + t*(1. + (1./6.)*t));
-		if(t <= 0 && t > -1)
-			return (2./3.) + t*t*(-1. - 0.5*t);
-		if( t <= 1 && t > 0)
-			return (2./3.) + t*t*(-1. + 0.5*t);
-		return (4./3.) + t*(-2. + t*(1. - (1./6.)*t));
+	static inline O H(const I &t) {
+		return t >= 0 ? 1 : 0;
+	}
+	static inline O bspline3(const I &x){
+		return pow(x+1.5, 2) * H(x+1.5)/2. - 3.*pow(x+1.5-1, 2)* H(x+1.5-1)/2. + 3* H(x+1.5-2)*pow(x+1.5-2, 2)/2. -  H(x+1.5-3)*pow(x+1.5-3,2)/2.;
 	}
 
 
 public:
 	static std::string getBasisName(){
-		return std::string("tp1cubic");
+		return std::string("tp1quadratic");
 	}
 	static const O M(const I &x, const I &y) { return (O)bspline3(x)*bspline3(y); };
 	static const O M(const vector2<I> &p) { return (O)bspline3(p.i)*bspline3(p.j); };
@@ -139,7 +134,7 @@ public:
 	// the idea behind this, is to allow basis functions
 	// to provide a potentially optimized version of
 	// the convolution sum for particular lattices.
-	inline static const O convolutionSum(const vector2<I> &p, const shift_invariant_space2< tp2cubic, O, I> *lattice) {
+	inline static const O convolutionSum(const vector2<I> &p, const shift_invariant_space2< tp2quadratic, O, I> *lattice) {
 		O sum = 0;
 		I dh = lattice->getScale();
 		vector2<I> vox(p.i/dh, p.j/dh);		
@@ -149,8 +144,7 @@ public:
 
 		for(int i = -1; i <= 2; i++)
 			for(int j = -1; j <= 2; j++) {
-				sum += lattice->GV(vx + i, vy + j) *
-						tp2cubic::M(vox.i - I(vx + i), vox.j - I(vy + j));
+				sum += lattice->GV(vx + i, vy + j) * M(vox.i - I(vx + i), vox.j - I(vy + j));
 			}
 		return sum;		
 	}

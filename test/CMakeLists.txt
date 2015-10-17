@@ -9,6 +9,7 @@ add_executable(mc_test mc_test.cpp)
 add_executable(prim_test primitive_test.cpp)
 add_executable(scattered_test scattered_test.cpp)
 add_executable(ppm_test ppm_test.cpp)
+add_executable(imageproc_test imageproc_test.cpp)
 
 
 target_link_libraries (array_test ${LIBS})
@@ -20,6 +21,7 @@ target_link_libraries (cc_test ${LIBS})
 target_link_libraries (prim_test ${LIBS})
 target_link_libraries (scattered_test ${LIBS})
 target_link_libraries (ppm_test ${LIBS})
+target_link_libraries (imageproc_test ${LIBS})
 
 add_test(ArrayTest array_test)
 add_test(BCCTest bcc_test)
@@ -30,4 +32,5 @@ add_test(PrimitiveTest prim_test)
 add_test(ScatteredDataTest scattered_test)
 add_test(FCCTest fcc_test)
 add_test(PPMTest ppm_test)
+add_test(PPMTest imageproc_test)
 

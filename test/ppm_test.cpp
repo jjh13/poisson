@@ -8,9 +8,14 @@
 #include <sisl/lattice/cartesian2_odd.hpp>
 #include <sisl/basis/tp2linear.hpp>
 #include <sisl/basis/tp2cubic.hpp>
+
+#include <sisl/basis/dir4bs.hpp>
+#include <sisl/basis/zpelement.hpp>
+
 #include <poisson/ppm_writer.hpp>
 
 #include <iostream>
+#include <tuple>
 
 using namespace sisl;
 using namespace std;
@@ -51,6 +56,28 @@ TEST_CASE("Test cartesian odd PPM", "2d") {
 		}
 	}
 	image.write("imgtst.ppm");
+}
+
+TEST_CASE("Test cartesian odd PPM2", "2d") {
+	cartesian2_odd<zp_element<double,double>, double, double> lat(1./(32.-1.));
+	ppm_writer<double, double> image(256, 256);
+	
+
+	for(int x = 15; x < 25; x++) {
+		for(int y = 15; y < 25; y++) {
+ 			lat.SV(x,y, 100.);
+ 		}
+	}
+
+	int i=0,j=0;
+	for(double x = 0; x < 1.; x+= 1./256., i++) {
+		j = 0;
+		for(double y = 0; y < 1.; y+= 1./256., j++) {
+			double v = lat.f(x,y);
+			image.at(i,j) = vector3<double>(v,v,v);
+		}
+	}
+	image.write("imgtst_zp.ppm");
 }
 
 TEST_CASE("Test splatting", "") {
@@ -209,4 +236,71 @@ TEST_CASE("Test pointfit2", "") {
 	}
 	image.write("pfit.ppm");
 
+}
+
+TEST_CASE("Test 4dir boxspline  PPM", "2d") {
+#define RES 128
+	cartesian2_odd<zp_element<double,double>, double, double> lat(1./(double(RES)-1.));
+	cartesian2_odd<zp_element<double,double>, double, double> flat(1./(double(RES)-1.));
+	ppm_writer<double, double> image(1024, 1024);
+	ppm_writer<double, double> imagef(1024, 1024);
+
+	vector<tuple<int, int, double>> qFilter = {
+		make_tuple(-1,1, 1./8.),
+		make_tuple(0,1, -3./8.),
+
+		make_tuple(-1, 0, -1./4.),
+		make_tuple( 0, 0, 2),
+
+		make_tuple(1, 0, -1./4.),
+		make_tuple(0, -1, -3./8.),
+		make_tuple(1,-1, 1./8.),
+	};
+
+	
+	printf("Sampling function ... \n");
+
+	for(int x = 1; x < RES - 1; x++) {
+		for(int y = 1; y < RES - 1; y++) {
+			vector2<double> p = lat.getSitePosition(x,y);
+			double xx = (p.i-0.5), yy = (p.j-0.5);
+			double M = cos(160.*M_PI*cos(sqrt(xx*xx + yy*yy)));
+
+ 			lat.SV(x,y, M);
+ 		}
+	}
+
+	printf("Filtering function ... \n");
+
+	for(int x = 1; x < RES - 1; x++) {
+		for(int y = 1; y < RES - 1; y++) {
+			double filtered =  lat.GV(x,y);
+
+			// for(auto it = qFilter.begin(); it != qFilter.end(); ++it) {
+			// 	tuple<int, int, double> t = *it;
+
+			// 	int dx = get<0>(t);
+			// 	int dy = get<1>(t);
+			// 	double w = get<2>(t);
+			// 	filtered += lat.GV(x+dx,y+dy) * w;
+
+			// }
+
+
+ 			flat.SV(x,y, filtered);
+ 		}
+	}
+
+	int i=0,j=0;
+	for(double x = 0; x < 1.; x+= 1./1024., i++) {
+		j = 0;
+		for(double y = 0; y < 1.; y+= 1./1024., j++) {
+			double v = lat.f(x,y);
+			double vf = flat.f(x,y);
+			image.at(i,j) = vector3<double>(v,v,v);
+			imagef.at(i,j) = vector3<double>(vf,vf,vf);
+		}
+	}
+	image.write("img4dir.ppm");
+	imagef.write("img4dir_filtered.ppm");
 }

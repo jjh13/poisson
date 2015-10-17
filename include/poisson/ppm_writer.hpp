@@ -39,7 +39,6 @@ private:
 				if(data.j > max) max = data.j;
 				if(data.k > max) max = data.k;
 			}
-		printf("%f %f\n", min, max );
 		return vector2<O>(min, max);
 	}
 
